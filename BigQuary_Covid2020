@@ -1,0 +1,117 @@
+select*
+from `covid-445015.covid_deaths.deaths`
+order by 3, 4
+
+select*
+from `covid-445015.covid_vac.vaccines`
+order by 3, 4
+
+-- Selecting data--
+
+select location, date, continent, total_cases, new_cases, total_deaths, population
+from `covid-445015.covid_deaths.deaths`
+order by 1,2
+
+
+-- looking at total cases vs total deaths in and location--
+-- shows the likelihood of dying if contracting covid during pandamic January 2020- April 2021-- 
+
+select location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 as DeathPercentage
+from `covid-445015.covid_deaths.deaths`
+where location = 'United States'
+order by 1,2
+
+-- total cases vs population--
+
+select location, date, population, total_cases, (total_cases/population)*100 as percentage_pop
+from `covid-445015.covid_deaths.deaths`
+where location = 'United States'
+order by 1,2
+
+-- Countries with highest infection rate comparedt to population-- 
+
+select location, population, max(total_cases) as highest_rate, 
+max((total_cases/population)) *100 as percentage_pop_infected
+from `covid-445015.covid_deaths.deaths`
+where continent is not null
+group by location, population
+order by percentage_pop_infected desc
+
+
+-- Counties with highst death count per population--
+
+select location, max(total_deaths) as totaldeath_count
+from `covid-445015.covid_deaths.deaths`
+where continent is not null
+group by location
+order by totaldeath_count desc
+
+-- Continent-- 
+
+select location, max(total_deaths) as totaldeath_count
+from `covid-445015.covid_deaths.deaths`
+where continent is null
+group by location
+order by totaldeath_count desc
+
+
+-- Global numbers --
+
+select date, sum(new_cases) as total_cases, sum(new_deaths) as total_deaths, sum(new_deaths)/sum(new_cases)*100 as GdeathPercentage
+from `covid-445015.covid_deaths.deaths`
+where continent is not null
+group by date 
+order by 1,2
+
+-- Joining 2 Tables--
+
+select *
+from `covid-445015.covid_deaths.deaths` as dea
+join `covid-445015.covid_vac.vaccines` as vac
+  on dea.location = vac.location
+  and dea.date = vac.date
+
+-- views for visuals--
+
+create or replace view `covid-445015.covid_deaths.PopvsVac' as
+select dea.continent,
+ dea.location, dea.date,
+  dea.population, 
+  vac.new_vaccinations, 
+  sum(vac.new_vaccinations) over (partition by dea.location order by dea.location,dea.date) as RollingPeopleVaccinated
+from `covid-445015.covid_deaths.deaths` as dea
+join `covid-445015.covid_vac.vaccines` as vac
+  on dea.location = vac.location
+  and dea.date = vac.date
+where dea.continent is not null)
+
+select *
+from `covid-445015.covid_deaths.PopvsVac'
+
+-- Total POP vs VAC--
+
+select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, sum(vac.new_vaccinations) over (partition by dea.location) as vac_sum
+from `covid-445015.covid_deaths.deaths` as dea
+join `covid-445015.covid_vac.vaccines` as vac
+  on dea.location = vac.location
+  and dea.date = vac.date
+where dea.continent is not null
+order by 2,3 
+
+--cte--
+
+with PopvsVac as (
+select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, sum(vac.new_vaccinations) over (partition by dea.location order by dea.location,dea.date) as RollingPeopleVaccinated
+from `covid-445015.covid_deaths.deaths` as dea
+join `covid-445015.covid_vac.vaccines` as vac
+  on dea.location = vac.location
+  and dea.date = vac.date
+where dea.continent is not null)
+
+select*, (RollingPeopleVaccinated/population)*100 as PercVAC
+from PopvsVac 
+where location = 'United States'
+
+
+
+https://console.cloud.google.com/bigquery?sq=612308387836:0320a1a27b1a4c4cbff85764929bc329
